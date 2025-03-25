@@ -15,17 +15,23 @@ class Author(models.Model):
 
     """
 
+    name = models.CharField(max_length=20, null=True)
+    surname = models.CharField(max_length=20, null=True)
+    patronymic = models.CharField(max_length=20, null=True)
+
     def __str__(self):
         """
         Magic method is redefined to show all information about Author.
         :return: author id, author name, author surname, author patronymic
         """
+        return f"'id': {self.id}, 'name': '{self.name}', 'surname': '{self.surname}', 'patronymic': '{self.patronymic}'"
 
     def __repr__(self):
         """
         This magic method is redefined to show class and id of Author object.
         :return: class, id
         """
+        return f"{self.__class__.__name__}(id={self.id})"
 
     @staticmethod
     def get_by_id(author_id):
@@ -34,6 +40,11 @@ class Author(models.Model):
         :return: author object or None if a user with such ID does not exist
         """
 
+        try:
+            return Author.objects.get(id=author_id)
+        except Author.DoesNotExist:
+            return None
+
     @staticmethod
     def delete_by_id(author_id):
         """
@@ -41,6 +52,13 @@ class Author(models.Model):
         :type author_id: int
         :return: True if object existed in the db and was removed or False if it didn't exist
         """
+
+        try:
+            author = Author.objects.get(id=author_id)
+            author.delete()
+            return True
+        except Author.DoesNotExist:
+            return False
 
     @staticmethod
     def create(name, surname, patronymic):
@@ -54,17 +72,23 @@ class Author(models.Model):
         :return: a new author object which is also written into the DB
         """
 
+        if len(name) > 20 or len(surname) > 20 or len(patronymic) > 20:
+            return  None
+        author = Author(name=name, surname=surname, patronymic=patronymic)
+        author.save()
+        return author
+
     def to_dict(self):
         """
         :return: author id, author name, author surname, author patronymic
-        :Example:
-        | {
-        |   'id': 8,
-        |   'name': 'fn',
-        |   'surname': 'mn',
-        |   'patronymic': 'ln',
-        | }
         """
+        return {
+            'id': self.id,
+            'name': self.name,
+            'surname': self.surname,
+            'patronymic': self.patronymic,
+        }
+
 
     def update(self,
                name=None,
@@ -81,8 +105,16 @@ class Author(models.Model):
         :return: None
         """
 
+        if name is not None and len(name) <=20:
+            self.name = name
+        if surname is not None and len(surname) <=20:
+            self.surname = surname
+        if patronymic is not None and len(patronymic) <=20:
+            self.patronymic = patronymic
+
     @staticmethod
     def get_all():
         """
         returns data for json request with QuerySet of all authors
         """
+        return Author.objects.all()
