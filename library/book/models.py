@@ -65,3 +65,10 @@ class Book(models.Model):
     def get_all():
         return Book.objects.all()
 
+class Order(models.Model):
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    order_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Order {self.id}: {self.book.name} by {self.user.username}"

@@ -1,49 +1,86 @@
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
-from django.utils import timezone
+import time
 
 ROLE_CHOICES = (
     (0, 'visitor'),
     (1, 'admin'),
 )
 
+
 class CustomUser(AbstractBaseUser):
     """
-    This class represents a basic user.
+        This class represents a basic user. \n
+        Attributes:
+        -----------
+        param first_name: Describes first name of the user
+        type first_name: str max length=20
+        param last_name: Describes last name of the user
+        type last_name: str max length=20
+        param middle_name: Describes middle name of the user
+        type middle_name: str max length=20
+        param email: Describes the email of the user
+        type email: str, unique, max length=100
+        param password: Describes the password of the user
+        type password: str
+        param created_at: Describes the date when the user was created. Can't be changed.
+        type created_at: int (timestamp)
+        param updated_at: Describes the date when the user was modified
+        type updated_at: int (timestamp)
+        param role: user role, default role (0, 'visitor')
+        type updated_at: int (choices)
+        param is_active: user role, default value False
+        type updated_at: bool
 
-    Attributes:
-    -----------
-    first_name: str, max length=20
-    last_name: str, max length=20
-    middle_name: str, max length=20
-    email: str, unique, max length=100
-    password: str
-    created_at: int (timestamp)
-    updated_at: int (timestamp)
-    role: user role, default role (0, 'visitor')
-    is_active: bool, default=False
     """
-    first_name = models.CharField(max_length=20)
-    last_name = models.CharField(max_length=20)
+    first_name = models.CharField(max_length=20, blank=True, null=True)
+    last_name = models.CharField(max_length=20, blank=True, null=True)
     middle_name = models.CharField(max_length=20, blank=True, null=True)
-    email = models.EmailField(unique=True, max_length=100)
-    password = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    email = models.EmailField(max_length=100, unique=True, blank=False, null=True)
+    password = models.CharField(max_length=128)  # Пароль буде хешований
+    created_at = models.BigIntegerField(editable=False, null=True)
+    updated_at = models.BigIntegerField(null=True)
     role = models.IntegerField(choices=ROLE_CHOICES, default=0)
     is_active = models.BooleanField(default=False)
 
+    # Налаштування для автентифікації
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
 
+    def save(self, *args, **kwargs):
+        # Оновлюємо timestamps
+        if not self.created_at:
+            self.created_at = int(time.time())
+        self.updated_at = int(time.time())
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f'{self.first_name} {self.middle_name} {self.last_name} ({self.email})'
+        """
+        Magic method is redefined to show all information about CustomUser.
+        :return: user id, user first_name, user middle_name, user last_name,
+                 user email, user password, user updated_at, user created_at,
+                 user role, user is_active
+        """
+
+        return (f"'id': {self.id}, 'first_name': '{self.first_name}', 'middle_name': '{self.middle_name}', "
+                f"'last_name': '{self.last_name}', 'email': '{self.email}', 'password': '{self.password}', "
+                f"'created_at': {self.created_at}, 'updated_at': {self.updated_at}, 'role': {self.role}, "
+                f"'is_active': {self.is_active}")
 
     def __repr__(self):
-        return f"<CustomUser id={self.id} email={self.email}>"
+        """
+        This magic method is redefined to show class and id of CustomUser object.
+        :return: class, id
+        """
+
+        return f"{self.__class__.__name__}(id={self.id})"
 
     @staticmethod
     def get_by_id(user_id):
+        """
+        :param user_id: SERIAL: the id of a user to be found in the DB
+        :return: user object or None if a user with such ID does not exist
+        """
         try:
             return CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
@@ -51,6 +88,13 @@ class CustomUser(AbstractBaseUser):
 
     @staticmethod
     def get_by_email(email):
+        """
+        Returns user by email
+        :param email: email by which we need to find the user
+        :type email: str
+        :return: user object or None if a user with such ID does not exist
+        """
+
         try:
             return CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
@@ -58,6 +102,12 @@ class CustomUser(AbstractBaseUser):
 
     @staticmethod
     def delete_by_id(user_id):
+        """
+        :param user_id: an id of a user to be deleted
+        :type user_id: int
+        :return: True if object existed in the db and was removed or False if it didn't exist
+        """
+
         try:
             user = CustomUser.objects.get(id=user_id)
             user.delete()
@@ -67,38 +117,89 @@ class CustomUser(AbstractBaseUser):
 
     @staticmethod
     def create(email, password, first_name=None, middle_name=None, last_name=None):
+        """
+        :param first_name: first name of a user
+        :type first_name: str
+        :param middle_name: middle name of a user
+        :type middle_name: str
+        :param last_name: last name of a user
+        :type last_name: str
+        :param email: email of a user
+        :type email: str
+        :param password: password of a user
+        :type password: str
+        :return: a new user object which is also written into the DB
+        """
+
         user = CustomUser(
             email=email,
-            password=password,
             first_name=first_name,
             middle_name=middle_name,
             last_name=last_name,
         )
-        user.set_password(password)  # Set password using Django's hashing
+        user.set_password(password)  # Хешуємо пароль
         user.save()
         return user
 
     def to_dict(self):
+        """
+        :return: user id, user first_name, user middle_name, user last_name,
+                 user email, user password, user updated_at, user created_at, user is_active
+        :Example:
+        | {
+        |   'id': 8,
+        |   'first_name': 'fn',
+        |   'middle_name': 'mn',
+        |   'last_name': 'ln',
+        |   'email': 'ln@mail.com',
+        |   'created_at': 1509393504,
+        |   'updated_at': 1509402866,
+        |   'role': 0
+        |   'is_active:' True
+        | }
+        """
         return {
             'id': self.id,
             'first_name': self.first_name,
             'middle_name': self.middle_name,
             'last_name': self.last_name,
             'email': self.email,
-            'created_at': int(self.created_at.timestamp()),
-            'updated_at': int(self.updated_at.timestamp()),
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
             'role': self.role,
-            'is_active': self.is_active,
+            'is_active': self.is_active
         }
+    def update(self,
+               first_name=None,
+               last_name=None,
+               middle_name=None,
+               password=None,
+               role=None,
+               is_active=None):
+        """
+        Updates user profile in the database with the specified parameters.\n
+        :param first_name: first name of a user
+        :type first_name: str
+        :param middle_name: middle name of a user
+        :type middle_name: str
+        :param last_name: last name of a user
+        :type last_name: str
+        :param password: password of a user
+        :type password: str
+        :param role: role id
+        :type role: int
+        :param is_active: activation state
+        :type is_active: bool
+        :return: None
+        """
 
-    def update(self, first_name=None, last_name=None, middle_name=None, password=None, role=None, is_active=None):
-        if first_name:
+        if first_name is not None:
             self.first_name = first_name
-        if last_name:
+        if last_name is not None:
             self.last_name = last_name
-        if middle_name:
+        if middle_name is not None:
             self.middle_name = middle_name
-        if password:
+        if password is not None:
             self.set_password(password)
         if role is not None:
             self.role = role
@@ -108,7 +209,15 @@ class CustomUser(AbstractBaseUser):
 
     @staticmethod
     def get_all():
+        """
+        returns data for json request with QuerySet of all users
+        """
+
         return CustomUser.objects.all()
 
     def get_role_name(self):
-        return dict(ROLE_CHOICES).get(self.role, 'visitor')
+        """
+        returns str role name
+        """
+
+        return dict(ROLE_CHOICES).get(self.role, 'unknown')
